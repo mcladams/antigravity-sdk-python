@@ -32,9 +32,7 @@ from google.antigravity.connections.local.local_connection_config import LocalAg
 from google.antigravity.hooks import policy
 from google.antigravity.tools.tool_context import ToolContext
 
-_MODEL_NAME = flags.DEFINE_string(
-    "model_name", "gemini-3-flash-preview", "Gemini model name."
-)
+
 
 
 def record_fruit(fruit_name: str, count: int, ctx: ToolContext) -> str:
