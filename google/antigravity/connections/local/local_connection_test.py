@@ -1642,7 +1642,7 @@ class LocalConnectionSessionHooksTest(unittest.IsolatedAsyncioTestCase):
 
     class SessionStartHook(hooks_base.OnSessionStartHook):
 
-      async def run(self, context, data):  # pylint: disable=unused-argument
+      async def run(self, context: hooks_base.HookContext, data: None):  # pylint: disable=unused-argument
         called.append("started")
         event.set()
 
@@ -1666,7 +1666,7 @@ class LocalConnectionSessionHooksTest(unittest.IsolatedAsyncioTestCase):
 
     class SessionEndHook(hooks_base.OnSessionEndHook):
 
-      async def run(self, context, data):  # pylint: disable=unused-argument
+      async def run(self, context: hooks_base.HookContext, data: None):  # pylint: disable=unused-argument
         called.append("ended")
         event.set()
 
@@ -1699,7 +1699,7 @@ class LocalConnectionPostTurnHookTest(unittest.IsolatedAsyncioTestCase):
 
     class PostTurnHook(hooks_base.PostTurnHook):
 
-      async def run(self, context, data):  # pylint: disable=unused-argument
+      async def run(self, context: hooks_base.HookContext, data: str):  # pylint: disable=unused-argument
         captured.append(data)
 
     hr = hook_runner.HookRunner()

@@ -23,20 +23,6 @@ from google.antigravity.hooks import cli
 from google.antigravity.hooks import hooks
 
 
-class MockQuestion:
-
-  def __init__(self, question, options=None):
-    self.question = question
-    self.options = options or []
-
-
-class MockOption:
-
-  def __init__(self, opt_id, text):
-    self.id = opt_id
-    self.text = text
-
-
 class CliHooksTest(unittest.TestCase):
 
   def setUp(self):
@@ -104,118 +90,83 @@ class CliHooksTest(unittest.TestCase):
 
   @mock.patch("builtins.input")
   def test_ask_question_hook_option_number(self, mock_input):
-    """Verifies that the user can select an option by its index.
-
-    What: Tests AskQuestionHook when the user inputs a 1-based index.
-    Why: Ensures convenient selection for multiple-choice questions.
-    How: Asserts that the response contains the correct option ID.
-
-    Args:
-      mock_input: The patched builtins.input function.
-    """
+    """Verifies that the user can select an option by its index."""
     mock_input.return_value = "1"
     hook = cli.AskQuestionHook()
-    q = MockQuestion(
+    q = types.AskQuestionEntry(
         question="Choose?",
         options=[
-            MockOption(opt_id="opt1", text="Option 1"),
-            MockOption(opt_id="opt2", text="Option 2"),
+            types.AskQuestionOption(id="opt1", text="Option 1"),
+            types.AskQuestionOption(id="opt2", text="Option 2"),
         ],
     )
+    spec = types.AskQuestionInteractionSpec(questions=[q])
     session_ctx = hooks.SessionContext()
     turn_ctx = hooks.TurnContext(session_ctx)
     op_ctx = hooks.OperationContext(turn_ctx)
-    res = self.loop.run_until_complete(hook.run(op_ctx, [q]))
+    res = self.loop.run_until_complete(hook.run(op_ctx, spec))
     self.assertEqual(len(res.responses), 1)
     self.assertEqual(res.responses[0].selected_option_ids, ["opt1"])
 
   @mock.patch("builtins.input")
   def test_ask_question_hook_option_text(self, mock_input):
-    """Verifies that the user can select an option by its exact text.
-
-    What: Tests AskQuestionHook when the user inputs the text of an option.
-    Why: Ensures robust matching when users type the answer directly.
-    How: Asserts that the response contains the correct option ID.
-
-    Args:
-      mock_input: The patched builtins.input function.
-    """
+    """Verifies that the user can select an option by its exact text."""
     mock_input.return_value = "Option 2"
     hook = cli.AskQuestionHook()
-    q = MockQuestion(
+    q = types.AskQuestionEntry(
         question="Choose?",
         options=[
-            MockOption(opt_id="opt1", text="Option 1"),
-            MockOption(opt_id="opt2", text="Option 2"),
+            types.AskQuestionOption(id="opt1", text="Option 1"),
+            types.AskQuestionOption(id="opt2", text="Option 2"),
         ],
     )
+    spec = types.AskQuestionInteractionSpec(questions=[q])
     session_ctx = hooks.SessionContext()
     turn_ctx = hooks.TurnContext(session_ctx)
     op_ctx = hooks.OperationContext(turn_ctx)
-    res = self.loop.run_until_complete(hook.run(op_ctx, [q]))
+    res = self.loop.run_until_complete(hook.run(op_ctx, spec))
     self.assertEqual(len(res.responses), 1)
     self.assertEqual(res.responses[0].selected_option_ids, ["opt2"])
 
   @mock.patch("builtins.input")
   def test_ask_question_hook_write_in(self, mock_input):
-    """Verifies that the user can provide a write-in response.
-
-    What: Tests AskQuestionHook for open-ended questions.
-    Why: Ensures support for non-multiple-choice inputs.
-    How: Asserts that the response contains the write-in text.
-
-    Args:
-      mock_input: The patched builtins.input function.
-    """
+    """Verifies that the user can provide a write-in response."""
     mock_input.return_value = "custom answer"
     hook = cli.AskQuestionHook()
-    q = MockQuestion(question="What?")
+    q = types.AskQuestionEntry(question="What?", options=[])
+    spec = types.AskQuestionInteractionSpec(questions=[q])
     session_ctx = hooks.SessionContext()
     turn_ctx = hooks.TurnContext(session_ctx)
     op_ctx = hooks.OperationContext(turn_ctx)
-    res = self.loop.run_until_complete(hook.run(op_ctx, [q]))
+    res = self.loop.run_until_complete(hook.run(op_ctx, spec))
     self.assertEqual(len(res.responses), 1)
     self.assertEqual(res.responses[0].freeform_response, "custom answer")
 
   @mock.patch("builtins.input")
   def test_ask_question_hook_skip(self, mock_input):
-    """Verifies that the user can skip a question by providing empty input.
-
-    What: Tests AskQuestionHook with empty string input.
-    Why: Ensures optional questions can be bypassed gracefully.
-    How: Asserts that the response has skipped=True.
-
-    Args:
-      mock_input: The patched builtins.input function.
-    """
+    """Verifies that the user can skip a question by providing empty input."""
     mock_input.return_value = ""
     hook = cli.AskQuestionHook()
-    q = MockQuestion(question="What?")
+    q = types.AskQuestionEntry(question="What?", options=[])
+    spec = types.AskQuestionInteractionSpec(questions=[q])
     session_ctx = hooks.SessionContext()
     turn_ctx = hooks.TurnContext(session_ctx)
     op_ctx = hooks.OperationContext(turn_ctx)
-    res = self.loop.run_until_complete(hook.run(op_ctx, [q]))
+    res = self.loop.run_until_complete(hook.run(op_ctx, spec))
     self.assertEqual(len(res.responses), 1)
     self.assertTrue(res.responses[0].skipped)
 
   @mock.patch("builtins.input")
   def test_ask_question_hook_eof(self, mock_input):
-    """Verifies that EOFError results in a skipped question.
-
-    What: Tests AskQuestionHook when input raises EOFError.
-    Why: Ensures non-interactive execution does not crash.
-    How: Asserts that the response has skipped=True.
-
-    Args:
-      mock_input: The patched builtins.input function.
-    """
+    """Verifies that EOFError results in a skipped question."""
     mock_input.side_effect = EOFError
     hook = cli.AskQuestionHook()
-    q = MockQuestion(question="What?")
+    q = types.AskQuestionEntry(question="What?", options=[])
+    spec = types.AskQuestionInteractionSpec(questions=[q])
     session_ctx = hooks.SessionContext()
     turn_ctx = hooks.TurnContext(session_ctx)
     op_ctx = hooks.OperationContext(turn_ctx)
-    res = self.loop.run_until_complete(hook.run(op_ctx, [q]))
+    res = self.loop.run_until_complete(hook.run(op_ctx, spec))
     self.assertFalse(res.responses)
     self.assertTrue(res.cancelled)
 

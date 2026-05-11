@@ -289,7 +289,7 @@ class _PolicyDecideHook(hooks.PreToolCallDecideHook):
     self._buckets = buckets
 
   async def run(
-      self, context: hooks.HookContext, data: Any
+      self, context: hooks.HookContext, data: types.ToolCall
   ) -> hooks.HookResult:
     """Evaluates policies against the tool call.
 
@@ -300,7 +300,7 @@ class _PolicyDecideHook(hooks.PreToolCallDecideHook):
     Returns:
       HookResult allowing or denying the tool call.
     """
-    tool_call: types.ToolCall = data
+    tool_call = data
 
     for bucket in self._buckets:
       for p in bucket:

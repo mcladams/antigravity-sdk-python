@@ -59,6 +59,7 @@ Criteria for correct script performance:
 
 import asyncio
 from collections.abc import Sequence
+from typing import Any
 
 from absl import app
 from absl import logging
@@ -88,40 +89,40 @@ async def log_session_end():
 
 
 @hooks.pre_turn
-async def log_pre_turn(data) -> types.HookResult:
+async def log_pre_turn(data: str) -> types.HookResult:
   """Logs the user prompt before each turn. Always allows."""
   print(f"[Hook] Pre-turn — user prompt: {data!r}")
   return types.HookResult(allow=True)
 
 
 @hooks.post_turn
-async def log_post_turn(data):
+async def log_post_turn(data: str):
   """Logs the final model response after each turn."""
   print(f"[Hook] Post-turn — response: {data!r}")
 
 
 @hooks.pre_tool_call_decide
-async def log_pre_tool_call_decide(data) -> types.HookResult:
+async def log_pre_tool_call_decide(data: types.ToolCall) -> types.HookResult:
   """Logs tool calls before execution. Always approves."""
   print(f"[Hook] Pre-tool-call (decide) — tool: {data}")
   return types.HookResult(allow=True)
 
 
 @hooks.post_tool_call
-async def log_post_tool_call(data):
+async def log_post_tool_call(data: Any):
   """Logs tool results after execution."""
   print(f"[Hook] Post-tool-call — result: {data}")
 
 
 @hooks.on_tool_error
-async def log_tool_error(data):
+async def log_tool_error(data: Exception):
   """Logs tool errors. Does not provide a recovery value."""
   print(f"[Hook] Tool error — {data}")
   return None  # No recovery; let the error propagate.
 
 
 @hooks.pre_tool_call_decide
-async def log_pre_subagent_call(data) -> types.HookResult:
+async def log_pre_subagent_call(data: types.ToolCall) -> types.HookResult:
   """Logs subagent invocations by filtering on START_SUBAGENT. Always allows."""
   if data.name == types.BuiltinTools.START_SUBAGENT.value:
     print(f"[Hook] Pre-subagent-call — tool_call: {data}")
@@ -129,20 +130,22 @@ async def log_pre_subagent_call(data) -> types.HookResult:
 
 
 @hooks.post_tool_call
-async def log_post_subagent_call(data):
+async def log_post_subagent_call(data: Any):
   """Logs when a subagent trajectory completes by filtering on START_SUBAGENT."""
   if data.name == types.BuiltinTools.START_SUBAGENT.value:
     print(f"[Hook] Post-subagent-call — result: {data}")
 
 
 @hooks.on_compaction
-async def log_compaction(data):
+async def log_compaction(data: Any):
   """Logs context compaction events."""
   print(f"[Hook] Compaction — step: {data}")
 
 
 @hooks.on_interaction
-async def log_interaction(data) -> types.QuestionHookResult:
+async def log_interaction(
+    data: types.AskQuestionInteractionSpec,
+) -> types.QuestionHookResult:
   """Logs interaction requests. Skips all questions."""
   print(f"[Hook] Interaction — spec: {data.questions}")
   # Auto-select the first option for each question.

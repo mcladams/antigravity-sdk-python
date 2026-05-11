@@ -82,18 +82,18 @@ class AskQuestionHook(hooks.OnInteractionHook):
   """Hook that prompts the user to answer questions asked by the agent."""
 
   async def run(
-      self, context: hooks.HookContext, data: Any
+      self, context: hooks.HookContext, data: types.AskQuestionInteractionSpec
   ) -> hooks.QuestionHookResult:
     """Asks the user for answers to each question via standard input.
 
     Args:
       context: The hook context.
-      data: The list of AskQuestionEntry objects (expected to be a list).
+      data: Specification of the interaction.
 
     Returns:
       A QuestionHookResult containing the user's responses.
     """
-    questions = getattr(data, "questions", data)
+    questions = data.questions
     responses = []
     try:
       for q in questions:

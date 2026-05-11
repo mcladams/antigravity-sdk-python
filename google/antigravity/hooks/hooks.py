@@ -20,8 +20,9 @@ returned by their lifecycle callbacks.
 from __future__ import annotations
 
 import abc
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any, Awaitable, Callable, Generic, Optional, TypeVar
 
+from google.antigravity import types
 from google.antigravity.types import AskQuestionInteractionSpec
 from google.antigravity.types import HookResult
 from google.antigravity.types import QuestionHookResult
@@ -73,11 +74,15 @@ class OperationContext(HookContext):
 # --- Base Hook Types ---
 
 
-class InspectHook(abc.ABC):
+T = TypeVar('T')
+R = TypeVar('R')
+
+
+class InspectHook(abc.ABC, Generic[T]):
   """Read-only, non-blocking hook for observability."""
 
   @abc.abstractmethod
-  async def run(self, context: HookContext, data: Any) -> None:
+  async def run(self, context: HookContext, data: T) -> None:
     """Runs the inspection hook.
 
     Args:
@@ -87,11 +92,11 @@ class InspectHook(abc.ABC):
     pass
 
 
-class DecideHook(abc.ABC):
+class DecideHook(abc.ABC, Generic[T]):
   """Read-only, blocking hook for policy decisions."""
 
   @abc.abstractmethod
-  async def run(self, context: HookContext, data: Any) -> HookResult:
+  async def run(self, context: HookContext, data: T) -> HookResult:
     """Runs the decision hook.
 
     Args:
@@ -104,11 +109,11 @@ class DecideHook(abc.ABC):
     pass
 
 
-class TransformHook(abc.ABC):
+class TransformHook(abc.ABC, Generic[T, R]):
   """Modifying, blocking hook for data transformation."""
 
   @abc.abstractmethod
-  async def run(self, context: HookContext, data: Any) -> Any:
+  async def run(self, context: HookContext, data: T) -> R:
     """Runs the transformation hook.
 
     Args:
@@ -128,45 +133,59 @@ Hook = InspectHook | DecideHook | TransformHook
 
 
 # Session
-class OnSessionStartHook(InspectHook):
+class OnSessionStartHook(InspectHook[None]):
   """Invoked when the session starts."""
 
   pass
 
 
-class OnSessionEndHook(InspectHook):
+class OnSessionEndHook(InspectHook[None]):
   """Invoked when the session ends."""
 
   pass
 
 
 # Turn
-class PreTurnHook(DecideHook):
-  """Invoked before a turn starts."""
+class PreTurnHook(DecideHook[str]):
+  """Invoked before a turn starts.
+
+  The `data` parameter receives the user's prompt string.
+  """
 
   pass
 
 
-class PostTurnHook(InspectHook):
-  """Invoked after a turn ends."""
+class PostTurnHook(InspectHook[str]):
+  """Invoked after a turn ends.
+
+  The `data` parameter receives the model's response text for the completed
+  turn.
+  """
 
   pass
 
 
 # Tool
-class PreToolCallDecideHook(DecideHook):
-  """Invoked before a tool call to decide if it should proceed."""
+class PreToolCallDecideHook(DecideHook[types.ToolCall]):
+  """Invoked before a tool call to decide if it should proceed.
+
+  The `data` parameter receives the `types.ToolCall` object.
+  """
 
   pass
 
 
-class PostToolCallHook(InspectHook):
-  """Invoked after a tool call completes."""
+class PostToolCallHook(InspectHook[Any]):
+  """Invoked after a tool call completes.
+
+  The `data` parameter receives the `types.Step` object containing the tool call
+  and its results.
+  """
 
   pass
 
 
-class OnToolErrorHook(TransformHook):
+class OnToolErrorHook(TransformHook[Exception, Any]):
   """Invoked when a tool fails, allowing for recovery or modification.
 
   Receives the raised exception and returns the error representation that
@@ -181,26 +200,15 @@ class OnToolErrorHook(TransformHook):
 
 
 # Interaction
-class OnInteractionHook(TransformHook):
+class OnInteractionHook(
+    TransformHook[AskQuestionInteractionSpec, QuestionHookResult]
+):
   """Hook invoked when the agent needs user interaction.
 
   This is a superset of QuestionHook and handles all user interactions.
   """
 
-  @abc.abstractmethod
-  async def run(
-      self, context: HookContext, data: AskQuestionInteractionSpec
-  ) -> QuestionHookResult:
-    """Runs the interaction hook.
-
-    Args:
-      context: The hook context.
-      data: Specification of the interaction.
-
-    Returns:
-      The interaction result.
-    """
-    pass
+  pass
 
 
 # Compaction
@@ -235,7 +243,9 @@ def pre_turn(func: Callable[[str], Awaitable[HookResult]]):
   return FunctionPreTurnHook(func)
 
 
-def pre_tool_call_decide(func: Callable[[Any], Awaitable[HookResult]]):
+def pre_tool_call_decide(
+    func: Callable[[types.ToolCall], Awaitable[HookResult]],
+):
   """Decorator for PreToolCallDecideHook."""
 
   class FunctionPreToolCallDecideHook(PreToolCallDecideHook):
