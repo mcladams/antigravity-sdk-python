@@ -28,7 +28,6 @@ Override the thinking level:
 
 import asyncio
 from collections.abc import Sequence
-import os
 import sys
 
 from absl import app
@@ -38,6 +37,7 @@ from absl import logging
 from google.antigravity import types
 from google.antigravity.agent import Agent
 from google.antigravity.connections.local.local_connection_config import LocalAgentConfig
+from google.antigravity.utils.interactive import async_input
 
 _MODEL_NAME = flags.DEFINE_string(
     "model_name", "gemini-3-flash-preview", "Gemini model name."
@@ -82,7 +82,7 @@ async def run():
 
       while True:
         try:
-          user_input = await asyncio.to_thread(input, "\n→ ")
+          user_input = await async_input("\n→ ")
           user_input = user_input.strip()
           if not user_input:
             continue
@@ -109,11 +109,6 @@ async def run():
   except Exception as e:  # pylint: disable=broad-exception-caught
     print(f"An error occurred: {e}", file=sys.stderr)
     logging.exception("Error running example: %s", e)
-
-  # asyncio.to_thread(input) spawns a thread that blocks on stdin. This thread
-  # cannot be interrupted in CPython, so asyncio.run() will hang during executor
-  # shutdown. os._exit() is the standard workaround for this scenario.
-  os._exit(0)
 
 
 def main(argv: Sequence[str]) -> None:

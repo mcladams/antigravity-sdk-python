@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 from typing import TYPE_CHECKING
 
 from google.antigravity import types
@@ -42,6 +43,38 @@ from google.antigravity.types import QuestionResponse
 
 if TYPE_CHECKING:
   from google.antigravity import agent as agent_module
+
+
+async def async_input(prompt: str = "") -> str:
+  """Async version of `input` that handles asyncio cancellations.
+
+  Using `asyncio.to_thread(input)` is not an option as executor runs in a
+  non-daemon thread and will hang waiting for "enter" to be pressed on the
+  asyncio loop terdown.
+
+
+  Args:
+    prompt: The prompt to display.
+
+  Returns:
+    The user input string.
+  """
+  loop = asyncio.get_running_loop()
+  future = loop.create_future()
+
+  def _read_input():
+    try:
+      result = input(prompt)
+      if not future.cancelled():
+        loop.call_soon_threadsafe(future.set_result, result)
+    except BaseException as e:
+      if not future.cancelled():
+        loop.call_soon_threadsafe(future.set_exception, e)
+
+  thread = threading.Thread(target=_read_input, daemon=True)
+  thread.start()
+
+  return await future
 
 
 class ToolConfirmationHook(hooks.PreToolCallDecideHook):
@@ -64,7 +97,7 @@ class ToolConfirmationHook(hooks.PreToolCallDecideHook):
       print(f"Arguments: {data.args}")
 
     try:
-      ans = await asyncio.to_thread(input, "Allow execution? (y/n) [n]: ")
+      ans = await async_input("Allow execution? (y/n) [n]: ")
     except EOFError:
       ans = "n"
 
@@ -89,7 +122,7 @@ async def ask_user_handler(tc: types.ToolCall) -> bool:
     print(f"Arguments: {tc.args}")
 
   try:
-    ans = await asyncio.to_thread(input, "Allow execution? (y/n) [n]: ")
+    ans = await async_input("Allow execution? (y/n) [n]: ")
   except EOFError:
     ans = "n"
 
@@ -120,7 +153,7 @@ class AskQuestionHook(hooks.OnInteractionHook):
         for idx, opt in enumerate(options):
           print(f"  {idx + 1}. {opt.text}")
 
-        ans = await asyncio.to_thread(input, "Response: ")
+        ans = await async_input("Response: ")
         ans = ans.strip()
         if not ans:
           responses.append(QuestionResponse(skipped=True))
@@ -183,7 +216,7 @@ async def run_interactive_loop(agent: agent_module.Agent) -> None:
   print("Starting interactive loop. Type 'exit' or 'quit' to end.")
   while True:
     try:
-      user_input = await asyncio.to_thread(input, "User: ")
+      user_input = await async_input("User: ")
       user_input = user_input.strip()
       if not user_input:
         continue

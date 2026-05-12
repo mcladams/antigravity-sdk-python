@@ -15,6 +15,7 @@
 """Tests for interactive CLI utilities."""
 
 import asyncio
+import threading
 import unittest
 from unittest import mock
 
@@ -24,6 +25,55 @@ from google.antigravity.connections import local as local_connection
 from google.antigravity.conversation import conversation
 from google.antigravity.hooks import hooks
 from google.antigravity.utils import interactive
+
+
+class AsyncInputTest(unittest.IsolatedAsyncioTestCase):
+  """Tests for async_input."""
+
+  @mock.patch("builtins.input")
+  async def test_returns_user_input(self, mock_input):
+    """Verifies that async_input returns the value from input()."""
+    mock_input.return_value = "hello"
+    result = await interactive.async_input("prompt> ")
+    self.assertEqual(result, "hello")
+    mock_input.assert_called_once_with("prompt> ")
+
+  @mock.patch("builtins.input")
+  async def test_default_prompt(self, mock_input):
+    """Verifies that async_input passes an empty prompt by default."""
+    mock_input.return_value = "test"
+    result = await interactive.async_input()
+    self.assertEqual(result, "test")
+    mock_input.assert_called_once_with("")
+
+  @mock.patch("builtins.input")
+  async def test_propagates_eof_error(self, mock_input):
+    """Verifies that EOFError from input() is propagated."""
+    mock_input.side_effect = EOFError("end of file")
+    with self.assertRaises(EOFError):
+      await interactive.async_input("prompt> ")
+
+  @mock.patch("builtins.input")
+  async def test_cancellation(self, mock_input):
+    """Verifies that cancelling the future does not crash the thread."""
+    started = threading.Event()
+    blocker = threading.Event()
+
+    def blocking_input(prompt):
+      del prompt
+      started.set()
+      blocker.wait()
+      return "unused"
+
+    mock_input.side_effect = blocking_input
+
+    task = asyncio.create_task(interactive.async_input("prompt> "))
+    # Wait for the thread to actually start and call input().
+    await asyncio.get_event_loop().run_in_executor(None, started.wait)
+    task.cancel()
+    with self.assertRaises(asyncio.CancelledError):
+      await task
+    blocker.set()  # Let the daemon thread exit cleanly.
 
 
 class ToolConfirmationHookTest(unittest.TestCase):
@@ -248,16 +298,19 @@ class RunInteractiveLoopTest(unittest.IsolatedAsyncioTestCase):
       "local.local_connection.LocalConnectionStrategy"
   )
   @mock.patch.object(conversation.Conversation, "create")
-  @mock.patch("asyncio.to_thread")
+  @mock.patch(
+      "google.antigravity.utils.interactive.async_input",
+      new_callable=mock.AsyncMock,
+  )
   async def test_run_interactive_loop(
-      self, mock_to_thread, mock_conv_create, mock_strategy_class
+      self, mock_async_input, mock_conv_create, mock_strategy_class
   ):
     """Verifies the basic interactive loop flow.
 
     What: Simulates empty input, a valid prompt, and 'exit'.
     Why: Ensures the loop correctly skips blanks, sends prompts,
          prints responses, and exits on 'exit'.
-    How: Mocks asyncio.to_thread (stdin) and conversation methods,
+    How: Mocks async_input (stdin) and conversation methods,
          then asserts send was called and output was printed.
     """
     mock_strategy_instance = mock.MagicMock()
@@ -278,7 +331,7 @@ class RunInteractiveLoopTest(unittest.IsolatedAsyncioTestCase):
     mock_conv_create.return_value = mock_cm
 
     # Mock input to return '', 'hello' then 'exit'
-    mock_to_thread.side_effect = ["", "hello", "exit"]
+    mock_async_input.side_effect = ["", "hello", "exit"]
 
     config = local_connection.LocalAgentConfig(system_instructions="test")
     async with agent.Agent(config) as ag:
@@ -293,9 +346,12 @@ class RunInteractiveLoopTest(unittest.IsolatedAsyncioTestCase):
       "local.local_connection.LocalConnectionStrategy"
   )
   @mock.patch.object(conversation.Conversation, "create")
-  @mock.patch("asyncio.to_thread")
+  @mock.patch(
+      "google.antigravity.utils.interactive.async_input",
+      new_callable=mock.AsyncMock,
+  )
   async def test_run_interactive_loop_interrupt(
-      self, mock_to_thread, mock_conv_create, mock_strategy_class
+      self, mock_async_input, mock_conv_create, mock_strategy_class
   ):
     """Verifies clean exit on KeyboardInterrupt.
 
@@ -308,7 +364,7 @@ class RunInteractiveLoopTest(unittest.IsolatedAsyncioTestCase):
     mock_strategy_instance.stop = mock.AsyncMock()
     mock_strategy_class.return_value = mock_strategy_instance
 
-    mock_to_thread.side_effect = KeyboardInterrupt()
+    mock_async_input.side_effect = KeyboardInterrupt()
 
     config = local_connection.LocalAgentConfig(system_instructions="test")
     async with agent.Agent(config) as ag:
@@ -322,9 +378,12 @@ class RunInteractiveLoopTest(unittest.IsolatedAsyncioTestCase):
       "local.local_connection.LocalConnectionStrategy"
   )
   @mock.patch.object(conversation.Conversation, "create")
-  @mock.patch("asyncio.to_thread")
+  @mock.patch(
+      "google.antigravity.utils.interactive.async_input",
+      new_callable=mock.AsyncMock,
+  )
   async def test_run_interactive_loop_exception(
-      self, mock_to_thread, mock_conv_create, mock_strategy_class
+      self, mock_async_input, mock_conv_create, mock_strategy_class
   ):
     """Verifies error handling in the interactive loop.
 
@@ -337,7 +396,7 @@ class RunInteractiveLoopTest(unittest.IsolatedAsyncioTestCase):
     mock_strategy_instance.stop = mock.AsyncMock()
     mock_strategy_class.return_value = mock_strategy_instance
 
-    mock_to_thread.side_effect = [ValueError("Fail"), "exit"]
+    mock_async_input.side_effect = [ValueError("Fail"), "exit"]
 
     config = local_connection.LocalAgentConfig(system_instructions="test")
     async with agent.Agent(config) as ag:
