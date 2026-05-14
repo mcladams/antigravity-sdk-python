@@ -71,6 +71,33 @@ class AgentConfigTest(unittest.TestCase):
     config = ConcreteConfig(system_instructions="test")
     self.assertEqual(config.system_instructions, "test")
 
+  def test_response_schema_valid_json_string(self):
+    class ConcreteConfig(connection.AgentConfig):
+
+      def create_strategy(self, *, tool_runner, hook_runner):
+        return None
+
+    config = ConcreteConfig(response_schema='{"type": "object"}')
+    self.assertEqual(config.response_schema, '{"type": "object"}')
+
+  def test_response_schema_invalid_json_raises(self):
+    class ConcreteConfig(connection.AgentConfig):
+
+      def create_strategy(self, *, tool_runner, hook_runner):
+        return None
+
+    with self.assertRaises(ValueError):
+      ConcreteConfig(response_schema="not valid json {{{")
+
+  def test_response_schema_unsupported_type_raises(self):
+    class ConcreteConfig(connection.AgentConfig):
+
+      def create_strategy(self, *, tool_runner, hook_runner):
+        return None
+
+    with self.assertRaises(ValueError):
+      ConcreteConfig(response_schema=42)
+
 
 if __name__ == "__main__":
   unittest.main()

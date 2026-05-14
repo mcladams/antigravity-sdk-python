@@ -24,7 +24,6 @@ backend type and how to tear it down.
 
 import abc
 import json
-import logging
 from typing import Any, AsyncIterator, Callable
 import pydantic
 from google.antigravity import types
@@ -67,25 +66,24 @@ class AgentConfig(abc.ABC, pydantic.BaseModel):
       try:
         json.loads(v)
         return v
-      except json.JSONDecodeError:
-        logging.warning(
-            "Provided response_schema string is not a valid JSON. Schema"
-            " ignored."
-        )
-        return None
+      except json.JSONDecodeError as exc:
+        raise ValueError("response_schema string is not valid JSON.") from exc
     if isinstance(v, dict):
       return json.dumps(v)
     if isinstance(v, type) and issubclass(v, pydantic.BaseModel):
       return json.dumps(v.model_json_schema())
-    logging.warning(
-        "Unsupported response_schema format: %s. Schema ignored.", type(v)
+    raise ValueError(
+        f"Unsupported response_schema format: {type(v).__name__}. "
+        "Expected a JSON string, dict, or pydantic.BaseModel subclass."
     )
-    return None
 
   @abc.abstractmethod
   def create_strategy(
       self,
       *,
+      # Typed as Any due to circular dep: connection → tool_runner →
+      # tool_context → connection.  At runtime these are ToolRunner and
+      # HookRunner respectively.
       tool_runner: Any,
       hook_runner: Any,
   ) -> "ConnectionStrategy":
@@ -118,7 +116,7 @@ class Connection(abc.ABC):
 
   @property
   def conversation_id(self) -> str:
-    """Returns the conversation identifier, if one exists."""
+    """Returns the conversation identifier, or empty string if unset."""
     return ""
 
   @abc.abstractmethod
@@ -148,7 +146,7 @@ class Connection(abc.ABC):
 
   async def disconnect(self) -> None:
     """Disconnects the session and releases resources."""
-    ...
+    pass
 
   async def cancel(self) -> None:
     """Cancels the current turn in progress."""
