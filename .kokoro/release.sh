@@ -99,7 +99,7 @@ echo "=== Google Antigravity SDK Release v${VERSION} ==="
 # █                                                                      █
 # ██████████████████████████████████████████████████████████████████████████
 #
-PUBLISH="${PUBLISH:-}"
+PUBLISH="${PUBLISH:-true}"
 if [[ "${PUBLISH}" == "true" ]]; then
   echo "*** PUBLISH=true — wheels will be promoted to public PyPI after upload. ***"
 else
