@@ -463,6 +463,11 @@ importlib-metadata==9.0.0 \
     --hash=sha256:a4f57ab599e6a2e3016d7595cfd72eb4661a5106e787a95bcc90c7105b831efc
     # Added manually for Python < 3.12 build compatibility (dependency of keyring)
 
+zipp==3.23.0 \
+    --hash=sha256:071652d6115ed432f5ce1d34c336c0adfd6a884660d1e9712a256d3d3bd4b14e \
+    --hash=sha256:a07157588a12518c9d4034df3fbbee09c814741a33ff63c05fa29d26a2404166
+    # Added manually for Python < 3.10 build compatibility (dependency of importlib-metadata)
+
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==82.0.1 \
     --hash=sha256:7d872682c5d01cfde07da7bccc7b65469d3dca203318515ada1de5eda35efbf9 \
