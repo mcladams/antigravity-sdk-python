@@ -106,6 +106,8 @@ declare -A PLATFORM_TAGS=(
   ["linux-x86_64"]="manylinux_2_17_x86_64"
   ["linux-arm64"]="manylinux_2_17_aarch64"
   ["darwin-arm64"]="macosx_11_0_arm64"
+  ["windows-x86_64"]="win_amd64"
+  ["windows-arm64"]="win_arm64"
 )
 
 if [[ -z "${PUBLISH_PREBUILT_VERSION:-}" ]]; then
@@ -119,6 +121,8 @@ if [[ -z "${PUBLISH_PREBUILT_VERSION:-}" ]]; then
     ["linux-x86_64"]="localharness_linux_x86_64"
     ["linux-arm64"]="localharness_linux_arm64"
     ["darwin-arm64"]="localharness_darwin_arm64"
+    ["windows-x86_64"]="localharness_windows_x86_64"
+    ["windows-arm64"]="localharness_windows_arm64"
   )
 
   # --- Fetch binaries from MPM or local ---
@@ -127,6 +131,9 @@ if [[ -z "${PUBLISH_PREBUILT_VERSION:-}" ]]; then
     if [[ ! -f "${LOCAL_BIN}" ]]; then
       MPM_SUBDIR="${MPM_DIRS[$PLATFORM]:-}"
       MPM_BIN="${MPM_DIR}/${MPM_SUBDIR}/localharness_external"
+      if [[ "${PLATFORM}" == windows-* ]]; then
+        MPM_BIN="${MPM_BIN}.exe"
+      fi
       if [[ -n "${MPM_SUBDIR}" && -f "${MPM_BIN}" ]]; then
         echo "--- Copying ${PLATFORM} binary from MPM ---"
         mkdir -p "${BINARIES_DIR}/${PLATFORM}"
@@ -156,12 +163,17 @@ if [[ -z "${PUBLISH_PREBUILT_VERSION:-}" ]]; then
       continue
     fi
 
+    CUR_BIN_NAME="${BINARY_NAME}"
+    if [[ "${PLATFORM}" == windows-* ]]; then
+      CUR_BIN_NAME="${BINARY_NAME}.exe"
+    fi
+
     echo "--- Building wheel for ${PLATFORM} (${WHEEL_PLAT}) ---"
 
     # Place the binary into the package namespace.
     mkdir -p "${BIN_DEST}"
-    cp "${LOCAL_BIN}" "${BIN_DEST}/"
-    chmod +x "${BIN_DEST}/${BINARY_NAME}"
+    cp "${LOCAL_BIN}" "${BIN_DEST}/${CUR_BIN_NAME}"
+    chmod +x "${BIN_DEST}/${CUR_BIN_NAME}"
 
     # Ensure __init__.py exists for the bin subpackage so setuptools
     # discovers it via package-data.
