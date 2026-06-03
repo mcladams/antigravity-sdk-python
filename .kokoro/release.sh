@@ -60,6 +60,8 @@ fi
 # Kokoro exposes build_params as environment variables.
 if [[ -n "${GOB_COMMIT:-}" ]]; then
   echo "--- Pinning SDK source to GoB commit: ${GOB_COMMIT} ---"
+  # Fetch the commit first in case the clone is shallow.
+  git fetch origin "${GOB_COMMIT}" || git fetch origin
   git checkout "${GOB_COMMIT}"
 fi
 
