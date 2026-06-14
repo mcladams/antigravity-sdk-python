@@ -331,7 +331,7 @@ class Conversation:
     return self._cumulative_usage.model_copy()
 
   @property
-  def last_turn_usage(self) -> types.UsageMetadata | None:
+  def _last_turn_usage(self) -> types.UsageMetadata | None:
     """Returns token usage accumulated during the most recent turn, or None."""
     return self._turn_usage.model_copy() if self._turn_usage else None
 

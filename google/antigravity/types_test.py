@@ -1255,7 +1255,7 @@ class ChatResponseStreamTest(unittest.IsolatedAsyncioTestCase):
       yield t_text
 
     mock_conv = mock.MagicMock(spec=conversation.Conversation)
-    mock_conv.last_turn_usage = types.UsageMetadata(
+    mock_conv._last_turn_usage = types.UsageMetadata(
         prompt_token_count=10,
         candidates_token_count=20,
         total_token_count=30,

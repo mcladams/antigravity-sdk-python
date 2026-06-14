@@ -960,7 +960,7 @@ class ChatResponse:
   @property
   def usage_metadata(self) -> UsageMetadata | None:
     """Accumulated token usage across all model invocations in this turn."""
-    return self._conversation.last_turn_usage
+    return self._conversation._last_turn_usage  # pylint: disable=protected-access
 
   async def cancel(self) -> None:
     """Cancels the active execution turn and halts generation.
